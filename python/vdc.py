@@ -1,5 +1,15 @@
+from enum import Enum
+
 import numpy as np
 from tqdm import tqdm
+
+
+class HalfmoonOrientation(Enum):
+    HORIZONTAL = "horizontal"
+    VERTICAL = "vertical"
+    PLUS45 = "plus_45"
+    MINUS45 = "minus_45"
+
 
 def dft2(X, k, a, N):
     f1 = np.linspace(-1 / (2 * a[0]), 1 / (2 * a[0]), N[0]) - k[0] / X.shape[0]
@@ -36,7 +46,25 @@ class Pupil:
         outer_r = outer_na / sim_params['numerical_aperture']
         inner_r = inner_na / sim_params['numerical_aperture']
         self.amp = (self.r <= outer_r) & (self.r >= inner_r)
-    
+
+
+    def set_halfmoon_pupil(
+        self,
+        orientation: HalfmoonOrientation,
+        phase: float = np.pi,
+    ) -> None:
+        self.phase = np.ones_like(self.px, dtype=complex)
+
+        match orientation:
+            case HalfmoonOrientation.HORIZONTAL:
+                self.phase[self.px >= 0] = np.exp(1j * phase)
+            case HalfmoonOrientation.VERTICAL:
+                self.phase[self.py >= 0] = np.exp(1j * phase)
+            case HalfmoonOrientation.PLUS45:
+                self.phase[(self.px - self.py) >= 0] = np.exp(1j * phase)
+            case HalfmoonOrientation.MINUS45:
+                self.phase[(self.px + self.py) >= 0] = np.exp(1j * phase)
+
 
     def propagate(self, z, sim_params):
         scaling = sim_params['wavelength'] / (2 * sim_params['numerical_aperture'] * sim_params['psf_pitch'][0:2])
